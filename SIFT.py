@@ -1,7 +1,7 @@
 import numpy as np
 import cv2
 
-def make_scale_space(video_name):
+def make_scale_space(video_name, blur_levels, octave_levels):
     cap = cv2.VideoCapture(video_name);
     #octaves_set contains all octaves_set_single_frame
     octaves_set = [];
@@ -13,17 +13,13 @@ def make_scale_space(video_name):
 
         frame_count = frame_count + 1;
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY);
-
-        blur_levels = 5;
-        octave_levels = 4;
-
         # making room for new octaves_set_single_frame
         # octaves_set.append([]);
 
         octaves_set_single_frame = [];
 
         k = 2;
-        sigma = 1;
+        sigma = np.sqrt(2) / 2;
 
         for o_level in range(octave_levels):
             # adding new octave level
@@ -32,10 +28,6 @@ def make_scale_space(video_name):
             for b_level in range(blur_levels):
                 blurred_frame = cv2.GaussianBlur(frame, (5, 5), sigma);
                 octaves_set_single_frame[o_level].append(blurred_frame);
-                if b_level == 0 and o_level == 0:
-                    cv2.imshow('Level 1', blurred_frame);
-                if b_level == 4 and o_level == 1:
-                    cv2.imshow('Level 4', blurred_frame);
                 sigma = k * sigma;
 
             frame_dim = np.array(np.shape(frame));
@@ -56,5 +48,25 @@ def make_scale_space(video_name):
     cv2.destroyAllWindows();
     return octaves_set
 
-video_name = 'test_video.mp4';
-octaves_set = make_scale_space(video_name);
+blur_levels = 5;
+octave_levels = 4
+octaves_set = make_scale_space('test_video.mp4', blur_levels, octave_levels);
+LOG_set = [];
+for frame_index in range(len(octaves_set)):
+    LOG_single_frame = [];
+    for o_level in range(octave_levels):
+        LOG_single_frame.append([]);
+        #blur_level - 1 = no: of subtraction operations performed
+        for b_level in range(blur_levels - 1):
+            #converted to np.int16 because subtractions answer can be negative
+            LOG = (octaves_set[frame_index][o_level][b_level]).astype(np.int16) - \
+                  (octaves_set[frame_index][o_level][b_level + 1]).astype(np.int16);
+#            LOG = cv2.normalize(LOG, LOG, 0, 255, cv2.NORM_MINMAX, -1);
+#            LOG = LOG.astype(np.uint8);
+            LOG_single_frame[o_level].append(LOG);
+
+    LOG_set.append(LOG_single_frame);
+
+#for frame_index in range(len(octaves_set)):
+#    cv2.imshow('LOG', LOG_set[frame_index][1][0]);
+#    cv2.waitKey(25);
